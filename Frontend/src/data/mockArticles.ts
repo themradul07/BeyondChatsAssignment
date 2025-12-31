@@ -1,6 +1,8 @@
 import { Article, ArticlePair, ArticlesResponse } from "@/types/article";
 import axios from "axios";
 
+const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+
 
 // Extract all featured_image URLs from mockArticles
 export const articleImages = [
@@ -21,7 +23,7 @@ export const getRandomImg = (): string => {
 
 export const getArticlePairs = async (): Promise<number> => {
   try {
-    const response = await axios.get('http://localhost:5000/api/scrape/find-articles');
+    const response = await axios.get(`${baseUrl}/scrape/find-articles`);
     const len = response.data.length;
     console.log("Fetched article pairs length:", len);
     return len as number;
@@ -32,18 +34,15 @@ export const getArticlePairs = async (): Promise<number> => {
 };
 
 export const getArticleById = async (id: string): Promise<ArticlesResponse | undefined> => {
-  const res = await axios.get(`http://localhost:5000/api/articles/${id}`);
+  const res = await axios.get(`${baseUrl}/articles/${id}`);
   console.log("Fetched article by id:", res.data);
   return res.data;
 };
 
-export const getArticleBySlug = (slug: string): Article | undefined => {
-  return mockArticles.find((a) => a.slug === slug);
-};
 
 export const UpdateAllArticles = async (): Promise<{ message: string, articles: ArticlesResponse[], error?: string }> => {
   try {
-    const response = await axios.get('http://localhost:5000/api/scrape/update-articles');
+    const response = await axios.get(`${baseUrl}/scrape/update-articles`);
     return response.data;
   } catch (error) {
     console.error("Error updating articles:", error);
@@ -53,7 +52,7 @@ export const UpdateAllArticles = async (): Promise<{ message: string, articles: 
 
 export const getArticleCards = async (): Promise<ArticlesResponse[]> => {
   try {
-    const res = await axios.get('http://localhost:5000/api/articles/cards');
+    const res = await axios.get(`${baseUrl}/articles/cards`);
     console.log("Fetched article cards:", res.data);
     return res.data;
   } catch {
@@ -63,7 +62,7 @@ export const getArticleCards = async (): Promise<ArticlesResponse[]> => {
 
 export const deleteArticleById = async (id: string): Promise<boolean> => {
   try {
-    const response = await axios.delete(`http://localhost:5000/api/articles/${id}`);
+    const response = await axios.delete(`${baseUrl}/articles/${id}`);
     return response.status === 200;
   } catch (error) {
     console.error("Error deleting article:", error);
