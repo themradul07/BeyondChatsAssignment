@@ -5,27 +5,43 @@ const { getScrappedData, getGoogleLinks, updateContent } = require("../utils/scr
 
 const scrapeWebsite = async (req, res) => {
   try {
-    const baseUrl = "https://beyondchats.com/blogs/page/14";
+    const baseUrl = "https://beyondchats.com/blogs";
     const response = await axios.get(baseUrl);
     const html = response.data;
-    const $ = cheerio.load(html);
+    const $$$ = cheerio.load(html);
     const articles = [];
 
-
-    $("article").each((index, element) => {
-      if (index >= 5) return false; // Limit to first 5 articles
-      console.log("Scraping article:", index);
-      const title = $(element).find(".entry-title").text().trim();
-      const link = $(element).find(".entry-title a").attr("href");
-      const date = $(element).find(".ct-meta-element-date").text().trim();
-      console.log("Found date:", date);
-      console.log("Found title:", title);
-      if (title) {
-        articles.push({ title, date, link });
-        Article.create({ title, date, content: "", link, sourceUrl: "", isUpdated: false, references: [] });
+    //step 1 pages -> s2 -> last page navigate karo -> page reduce karo
+    let lastPageNumber = 1;
+    $$$(".page-numbers").each((index, element) => {
+      const pageNum = parseInt($$$(element).text().trim());
+      if (!isNaN(pageNum) && pageNum > lastPageNumber) {
+        lastPageNumber = pageNum;
       }
     });
 
+    console.log("Last page number:", lastPageNumber);
+
+    while (articles.length < 5 && lastPageNumber > 0) {
+      console.log("Scraping page number:", lastPageNumber);
+      const pageResponse = await axios.get(`${baseUrl}/page/${lastPageNumber}`);
+      const pageHtml = pageResponse.data;
+      const $ = cheerio.load(pageHtml);
+
+      $("article").each((index, element) => {
+        if (articles.length >= 5) return false; // Limit to first 5 articles
+        console.log("Scraping article:", index);
+        const title = $(element).find(".entry-title").text().trim();
+        const link = $(element).find(".entry-title a").attr("href");
+        const date = $(element).find(".ct-meta-element-date").text().trim();
+
+        if (title) {
+          articles.push({ title, date, link });
+          Article.create({ title, date, content: "", link, sourceUrl: "", isUpdated: false, references: [] });
+        }
+      });
+      lastPageNumber--;
+    }
 
     //Scraping the olds content
     for (const article of articles) {
@@ -33,12 +49,12 @@ const scrapeWebsite = async (req, res) => {
       const content = await axios.get(article.link);
       const contentHtml = content.data;
       const $$ = cheerio.load(contentHtml);
-      const articleContent = $$("#content").html().trim();
+      const articleContent = $$("#content").html().trim().split("For more such amazing content follow us")[0];
+
       console.log("Scraped content length for", article.title, ":", articleContent.length);
       await Article.updateOne({ title: article.title }, { oldcontent: articleContent });
     }
-
-    res.json({ message: "Scraping completed", length: 5 });
+    res.json({ message: "Scraping completed", length: articles.length });
   } catch (error) {
     res
       .status(500)
@@ -56,8 +72,8 @@ const updateAllArticles = async (req, res) => {
       article.content = await getScrappedData(referencelinks);
       try {
         console.log("Generating updated content for article:", article.title);
-        // const updatedContent = await updateContent(article.content, article.title);
-        const updatedContent = "The consolidated and rewritten content based on the references.";
+        const updatedContent = await updateContent(article.content, article.title);
+        // const updatedContent = "The consolidated and rewritten content based on the references.";
         article.content = updatedContent;
         article.isUpdated = true;
       } catch (genError) {

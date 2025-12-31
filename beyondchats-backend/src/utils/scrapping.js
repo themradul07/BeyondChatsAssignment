@@ -6,9 +6,6 @@ const ai = new GoogleGenAI({
 });
 require('dotenv').config();
 
-/**
- * Production-grade LLM content cleaner (85%+ site coverage)
- */
 const cleanForLLM = (text) => {
     let cleaned = text
         // 1. Remove HTML noise first
@@ -46,9 +43,6 @@ const cleanForLLM = (text) => {
     return uniqueSentences.join('. ').substring(0, 7500); // LLM safe
 };
 
-/**
- * Validate if content is actually readable article
- */
 const isReadableContent = (text) => {
     const words = text.split(/\s+/).length;
     const sentences = text.split(/[.!?]+/).length;
@@ -56,9 +50,6 @@ const isReadableContent = (text) => {
         !/login|subscribe|paywall|404|error/i.test(text.toLowerCase());
 };
 
-/**
- * Enhanced article extraction with better selectors + validation
- */
 const extractArticleText = ($) => {
     const candidates = [
         "article",
@@ -147,7 +138,6 @@ const getGoogleLinks = async (query) => {
 
 const getScrappedData = async (links) => {
     try {
-        // Handle single link or array
         const urls = Array.isArray(links) ? links : [links].filter(Boolean);
 
         if (urls.length === 0) {
@@ -160,7 +150,6 @@ const getScrappedData = async (links) => {
             urls.map(url =>
                 axios.get(url, {
                     headers: {
-                        // Pretend to be a modern browser
                         'User-Agent':
                             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
                             '(KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
@@ -189,13 +178,16 @@ const getScrappedData = async (links) => {
 
                 const content = extractArticleText($);
 
+
+
                 results.push({
                     url: res.config.url,
-                    title: title.substring(0, 200), // Truncate long titles
+                    title: title.substring(0, 200), 
                     content,
                     wordCount: content.split(/\s+/).length,
                     isValid: isReadableContent(content)
                 });
+
             } catch (docError) {
                 console.warn(`Failed to parse ${res.config.url}:`, docError.message);
             }
@@ -218,9 +210,9 @@ const getScrappedData = async (links) => {
     }
 };
 
-const updateContent = async (content , title) => {
+const updateContent = async (content, title) => {
     const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-lite",
         contents: content,
         config: {
             systemInstruction: ` You are an expert content writer.
@@ -235,9 +227,5 @@ return an Html with proper tags starting from the div tag <div class="article-co
     console.log(response.text);
     return response.text;
 }
-
-
-
-
 
 module.exports = { getGoogleLinks, getScrappedData, updateContent };
